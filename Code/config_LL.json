@@ -1,0 +1,31 @@
+{
+    "language"        : "PYTHON",
+    "main-file"       : "SpearmintRunner.py",
+    "experiment-name" : "LL",
+    "samples"         : 100,
+    "variables" : {
+        "L1" : {
+            "type" : "FLOAT",
+            "size" : 1,
+            "min"  : -7,
+            "max"  : 1
+        },
+        "L2" : {
+            "type" : "FLOAT",
+            "size" : 1,
+            "min"  : -7,
+            "max"  : 1
+        },
+        "D1" : {
+            "type" : "INT",
+            "size" : 1,
+            "min"  : 6,
+            "max"  : 28
+        }
+    },
+    "job_params"    : {
+    "dataset"  : DATA_NUM,
+	"cell"     : CELL_NUM,
+	"model"    : "LL"
+    }
+}

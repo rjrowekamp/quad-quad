@@ -1,0 +1,67 @@
+{
+    "language"        : "PYTHON",
+    "main-file"       : "SpearmintRunner.py",
+    "experiment-name" : "QQ",
+    "samples"         : 100,
+    "variables" : {
+        "L1" : {
+            "type" : "FLOAT",
+            "size" : 1,
+            "min"  : -7,
+            "max"  : 1
+        },
+        "L2" : {
+            "type" : "FLOAT",
+            "size" : 1,
+            "min"  : -7,
+            "max"  : 1
+        },
+        "Q1" : {
+            "type" : "FLOAT",
+            "size" : 1,
+            "min"  : -7,
+            "max"  : 1
+        },
+        "Q2" : {
+            "type" : "FLOAT",
+            "size" : 1,
+            "min"  : -7,
+            "max"  : 1
+        },
+        "U1" : {
+            "type" : "FLOAT",
+            "size" : 1,
+            "min"  : -7,
+            "max"  : 1
+        },
+        "U2" : {
+            "type" : "FLOAT",
+            "size" : 1,
+            "min"  : -7,
+            "max"  : 1
+        },
+        "N1" : {
+            "type" : "INT",
+            "size" : 1,
+            "min"  : 1,
+            "max"  : 24
+        },
+        "N2" : {
+            "type" : "INT",
+            "size" : 1,
+            "min"  : 1,
+            "max"  : 20
+        },
+        "D1" : {
+            "type" : "INT",
+            "size" : 1,
+            "min"  : 6,
+            "max"  : 28
+        }
+    },
+    "job_params"    : {
+    "dataset"  : DATA_NUM,
+	"cell"     : CELL_NUM,
+	"model"    : "QQ"
+    }
+}
