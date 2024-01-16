@@ -12,11 +12,8 @@ from keras import backend as K
 from keras.engine.topology import Layer
 from keras.layers import Activation
 from keras.regularizers import l1,l2,l1_l2,Regularizer
-from numpy.lib.stride_tricks import as_strided
-from numpy import transpose,prod
-import h5py
-import numpy as np
 from keras import initializers
+from numpy import prod
 
 # Sums the last dimension of its input
 class SumLayer(Layer):
