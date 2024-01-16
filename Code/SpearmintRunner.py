@@ -51,7 +51,16 @@ def run_seed(Y,S,seed,job_params):
 
     return corrcoef(r_valid,Y_valid)[0,1]
 
-def makeModelParams(params,modelType,stim_shape):
+def make_model_params(dataset,params,modelType):
+    
+    if dataset == 0:
+        stim_shape = [5,20]
+    elif dataset == 1:
+        stim_shape = [5,28]
+    elif dataset == 2:
+        stim_shape = [5,20]
+    elif dataset == 3:
+        stim_shape == [15,20]
 
     L1 = params['L1'][0]
     L2 = params['L2'][0]
@@ -104,15 +113,13 @@ def main(job_id,params):
     
     spikes,stim = load_stim(dataset,cell,**job_params)
     
-    model_params = makeModelParams(params,modelType,stim.shape[1:])
+    model_params = make_model_params(dataset,params,modelType)
 
     job_params['modelParams'] = model_params
-    
-    ptag = job_params.get('FileTag','')
 
-    tag = f'cell-{cell}{ptag}_model-{modelType}_run-{job_id}'
+    tag = f'model-{modelType}_run-{job_id}'
 
-    out_path = f'../Results/dataset_{dataset}/'
+    out_path = f'../Results/dataset_{dataset}/cell_{cell}/'
     
     job_params['FileName'] = out_path + tag + '_seed-%u'
 
