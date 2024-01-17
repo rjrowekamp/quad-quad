@@ -66,11 +66,7 @@ def main(dataset,cell,model_type):
             
             quad_var[1,seed] = submodel.predict(stim_train).var()
         
-    filename = f'../dataset_{dataset}/cell_{cell}/model-{model_type}_variance.dat'
-   
-    with open(filename,'wb') as f:
-        lin_var.tofile(f)
-        quad_var.tofile(f)
+    return lin_var,quad_var
 
 if __name__ == '__main__':
     
@@ -80,4 +76,10 @@ if __name__ == '__main__':
 
     model_type = sys.argv[3]
     
-    main(dataset,cell,model_type)
+    lin_var,quad_var = main(dataset,cell,model_type)
+    
+    filename = f'../Results/dataset_{dataset}/cell_{cell}/model-{model_type}_variance.dat'
+   
+    with open(filename,'wb') as f:
+        lin_var.tofile(f)
+        quad_var.tofile(f)
