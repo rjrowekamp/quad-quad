@@ -1,6 +1,6 @@
 {
     "language"        : "PYTHON",
-    "main-file"       : "SpearmintRunner.py",
+    "main-file"       : "spearmint_runner.py",
     "experiment-name" : "QQ",
     "samples"         : 100,
     "variables" : {
@@ -60,8 +60,9 @@
         }
     },
     "job_params"    : {
-	"dataset"  : DATA_NUM,
-	"cell"     : CELL_NUM,
-	"model"    : "QQ"
+	"dataset"  : DATASET,
+	"cell"     : CELL,
+	"model"    : "QQ",
+	"out_path" : OUT_PATH
     }
 }

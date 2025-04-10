@@ -1,6 +1,6 @@
 {
     "language"        : "PYTHON",
-    "main-file"       : "SpearmintRunner.py",
+    "main-file"       : "spearmint_runner.py",
     "experiment-name" : "LQ",
     "samples"         : 100,
     "variables" : {
@@ -42,8 +42,9 @@
         }
     },
     "job_params"    : {
-	"dataset"  : DATA_NUM,
-	"cell"     : CELL_NUM,
-	"model"    : "LQ"
+	"dataset"  : DATASET,
+	"cell"     : CELL,
+	"model"    : "LQ",
+	"out_path" : OUT_PATH
     }
 }

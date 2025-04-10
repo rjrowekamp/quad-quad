@@ -4,7 +4,7 @@ Created on Wed Feb 14 15:28:38 2018
 
 @author: rrowekamp
 """
-import sys
+
 from numpy import zeros
 from sklearn.model_selection import train_test_split
 from keras.models import Model
@@ -68,18 +68,7 @@ def main(dataset,cell,model_type):
         
     return lin_var,quad_var
 
-if __name__ == '__main__':
+# Calculate quadratic index
+def quad_index(lin_var,quad_var):
     
-    dataset = int(sys.argv[1])
-
-    cell = int(sys.argv[2])
-
-    model_type = sys.argv[3]
-    
-    lin_var,quad_var = main(dataset,cell,model_type)
-    
-    filename = f'../Results/dataset_{dataset}/cell_{cell}/model-{model_type}_variance.dat'
-   
-    with open(filename,'wb') as f:
-        lin_var.tofile(f)
-        quad_var.tofile(f)
+    return quad_var / (lin_var + quad_var)

@@ -7,9 +7,11 @@ Created on Wed Feb  1 14:34:36 2017
 
 import os
 from sklearn.model_selection import train_test_split
-from keras_models import make_model
 from keras.callbacks import ModelCheckpoint,EarlyStopping
-from numpy import array,corrcoef,zeros,ndarray
+from numpy import array,corrcoef,zeros
+
+from keras_models import make_model
+from stim_tools import load_stim
 
 def run_seed(spikes,
              stim,
@@ -24,7 +26,8 @@ def run_seed(spikes,
     spikes : ndarray
         N x 1 array of spikes.
     stim : ndarray
-        N x D array of stimuli.
+        N x D_t x D_s1 x D_s2 x D_c array of stimuli (temporal dimenion, first
+        spatial dimention, second spatial dimension, input channels)
     seed : int
         Seed to divide data by.
     job_params : dict
@@ -41,7 +44,7 @@ def run_seed(spikes,
 
     model_params = job_params['model_params']
 
-    filename = job_params['filename'] % seed
+    filename = f"{job_params['filename']}_seed-{seed}"
 
     weight_file = filename +'.weights.h5'
 
@@ -154,24 +157,31 @@ def main(job_id : int,
 
     """
 
+    # Extrat the parameters for this specific job
     job_params = params['job_params']
 
+    # LL, LQ, QL, or QQ, specifying whether each layer is linear or quadratic
     model_type = job_params['model']
 
-    spikes,stim = load_stim(job_id,**job_params)
+    # Create beginning of the name for files associated with this run
+    out_path    = job_params['out_path']
+    dataset     = job_params['dataset']
+    cell        = job_params['cell']
+    tag         = f'model-{model_type}_run-{job_id}'
     
+    job_params['filename'] = f'{out_path}{dataset}_{cell}_{tag}'
+
+    # Load stimulus
+    spikes,stim = load_stim(job_params)
+    
+    # Converts the hyperparameters associated with this run and the shape of 
+    # the stimulus into paramters for keras_models
     model_params = make_model_params(stim.shape[1:],params,model_type)
 
     job_params['model_params'] = model_params
 
-    tag = f'model-{model_type}_run-{job_id}'
-
-    out_path = OUT_PATH
-    
-    job_params['filename'] = out_path + tag + '_seed-%u'
-
-    spikes,stim = load_stim(**job_params)
-
+    # Fit four models with different divisions of data into train and cross-
+    # validation sets and return the correlations with the cross-validation set
     corr = zeros(4)
 
     for seed in range(4):
