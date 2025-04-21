@@ -6,8 +6,11 @@ Created on Tue Apr 15 13:41:56 2025
 @author: rrowekamp
 """
 
-from numpy import angle,exp,mgrid,ndarray,ones,pi
+from numpy import angle,arctan,cos,dot,exp,mgrid,ndarray,ones,pi,sin
 from numpy.fft import fftn
+from numpy.linalg import eigh
+
+from diff_evol import DETrainer
 
 def angle_mean(A            : ndarray,
                directional  : bool                      = False,
@@ -302,3 +305,104 @@ def phase_diff_fft(A            : ndarray,
     # Return average phase difference weighted by multiplied magnitude of each 
     # element
     return angle_mean(DT,weights=abs(FA)*abs(FB),directional=directional)
+
+def calc_ori_field(det          : DETrainer,
+                   d_up         : int           = 3,
+                   dot_weight   : bool          = True
+                   ) -> tuple[ndarray,ndarray]:
+    """
+    
+
+    Parameters
+    ----------
+    det : DETrainer
+        DESCRIPTION.
+    d_up : int, optional
+        DESCRIPTION. The default is 3.
+    dot_weight : bool, optional
+        DESCRIPTION. The default is True.
+
+    Returns
+    -------
+    tuple[ndarray,ndarray]
+        DESCRIPTION.
+
+    """
+    
+    func    = det.func
+    
+    
+    D1  = func.x.max()+1
+
+    X,Y = mgrid[:(D1*d_up),:(D1*d_up)]
+    X = X/d_up
+    Y = Y/d_up
+    X.shape = (-1,1)
+    Y.shape = (-1,1)
+    
+    num_params = func.num_params
+
+    param    = det.paramsMin().reshape((num_params,-1))
+
+    if dot_weight:
+        
+        gabor    = func.make_gabor(param)[0]
+
+        n    = func.num_feat
+
+        J    = func.J
+        
+        if func.one_sided == 1:
+
+            vJ = eigh(J)[1][:,-n:]
+            
+        elif func.one_sided == -1:
+            
+            vJ = eigh(J)[1][:,:n]
+            
+        else:
+            
+            wJ,vJ = eigh(J)
+            vJ = vJ[:,abs(wJ).argsort()[-n:]]
+
+        reduced_space   = dot(vJ,vJ.T)
+
+        gabor_proj      = (dot(reduced_space,gabor)**2).sum(0)**0.5
+        
+    else:
+        
+        gabor_proj = 1
+
+    w,x0,y0,th,sig,gam  = param[:6,:]
+    
+    z0  = x0 + y0*1j
+    z   = (func.x + func.y*1j - z0)*exp(1j*th)
+    x,y = z.real,z.imag
+    mag = exp(-(x**2+gam**2*y**2)/2/sig**2)
+    mag = (mag**2).sum(0)**0.5
+
+    s = sin(th)
+    c = cos(th)
+
+    if func.curved:
+        
+        kap     = param[-1,:]
+        
+        dUdX    = c-2*kap/sig*s*((Y-y0)*c+(X-x0)*s)
+        dUdY    = -s-2*kap/sig*c*((Y-y0)*c+(X-x0)*s)
+        
+    else:
+        
+        dUdX    = c
+        dUdY    = -s
+
+    Z           = (X+Y*1j-z0)*exp(1j*th)
+    XX,YY         = Z.real,Z.imag
+    PROFILE     = exp(-(XX**2+gam**2*YY**2)/2/sig**2)*w*mag*gabor_proj
+    
+    TH  = arctan(dUdX/dUdY)+pi/2
+
+    profile     = abs(PROFILE).sum(1)
+    ori         = angle_mean(TH,weights=abs(PROFILE),axis=1)
+
+    return ori,profile
