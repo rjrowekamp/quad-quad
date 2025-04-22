@@ -316,9 +316,9 @@ def calc_ori_field(det          : DETrainer,
     Parameters
     ----------
     det : DETrainer
-        DESCRIPTION.
+        DETrainer trained on QuadraticGaborFunction.
     d_up : int, optional
-        DESCRIPTION. The default is 3.
+        The upsample factor. The default is 3.
     dot_weight : bool, optional
         DESCRIPTION. The default is True.
 
@@ -331,19 +331,22 @@ def calc_ori_field(det          : DETrainer,
     
     func    = det.func
     
-    
+    # Get size of filter
     D1  = func.x.max()+1
+    D2  = func.y.max()+1
 
-    X,Y = mgrid[:(D1*d_up),:(D1*d_up)]
+    # Create upsampled grid
+    X,Y = mgrid[:(D1*d_up),:(D2*d_up)]
     X = X/d_up
     Y = Y/d_up
     X.shape = (-1,1)
     Y.shape = (-1,1)
     
+    # Reshape params so each Gabor is a column
     num_params = func.num_params
-
     param    = det.paramsMin().reshape((num_params,-1))
 
+    # Weight Gabors by their presence in the subspace covered by J
     if dot_weight:
         
         gabor    = func.make_gabor(param)[0]
@@ -352,6 +355,7 @@ def calc_ori_field(det          : DETrainer,
 
         J    = func.J
         
+        # Get excitatory, suppressive, or combined subspace.
         if func.one_sided == 1:
 
             vJ = eigh(J)[1][:,-n:]
@@ -369,18 +373,22 @@ def calc_ori_field(det          : DETrainer,
 
         gabor_proj      = (dot(reduced_space,gabor)**2).sum(0)**0.5
         
+    # Give Gabors equal weight
     else:
         
         gabor_proj = 1
-
+    
+    # Extract Gabor params
     w,x0,y0,th,sig,gam  = param[:6,:]
     
+    # Calculate Gaussian profile
     z0  = x0 + y0*1j
     z   = (func.x + func.y*1j - z0)*exp(1j*th)
     x,y = z.real,z.imag
     mag = exp(-(x**2+gam**2*y**2)/2/sig**2)
     mag = (mag**2).sum(0)**0.5
 
+    # Calculate the excitatory and suppressive orientations at each point
     s = sin(th)
     c = cos(th)
 
@@ -402,7 +410,43 @@ def calc_ori_field(det          : DETrainer,
     
     TH  = arctan(dUdX/dUdY)+pi/2
 
+    # Sum profile across Gabors
     profile     = abs(PROFILE).sum(1)
     ori         = angle_mean(TH,weights=abs(PROFILE),axis=1)
 
     return ori,profile
+
+def calc_layer1_ex_sup_diff(det_ex      : DETrainer,
+                            det_sup     : DETrainer,
+                            d_up        : int   = 3,
+                            dot_weight  : bool  = True
+                            ) -> ndarray:
+    """
+    Calculate the difference in the mean excitatory and suppressive 
+    orientations at their point of maximum interaction.
+
+    Parameters
+    ----------
+    det_ex : DETrainer
+        DETrainer trained on QuadraticGaborFunction for excitatory features.
+    det_sup : DETrainer
+        DETrainer tranid on QuadraticGaborfunction for suppressive features.
+    d_up : int, optional
+        The upsample factor. The default is 3.
+    dot_weight : bool, optional
+        Whether to weight Gabors by projections into subspace of J. The default 
+        is True.
+
+    Returns
+    -------
+    ndarray
+        The orientation difference.
+
+    """
+    
+    ori_ex,profile_ex       = calc_ori_field(det_ex,d_up,dot_weight)
+    ori_sup,profile_sup     = calc_ori_field(det_sup,d_up,dot_weight)
+    
+    ind = (profile_ex*profile_sup).argmax()
+    
+    return angle_diff(ori_ex[ind],ori_sup[ind])
