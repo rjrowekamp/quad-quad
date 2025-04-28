@@ -6,7 +6,8 @@ Created on Tue Apr 15 13:41:56 2025
 @author: rrowekamp
 """
 
-from numpy import angle,arctan,cos,dot,exp,mgrid,ndarray,ones,pi,sin
+from numpy import angle,arctan,cos,dot,exp,float64,mgrid,ndarray,ones,pi,prod
+from numpy import sin
 from numpy.fft import fftn
 from numpy.linalg import eigh
 
@@ -450,3 +451,120 @@ def calc_layer1_ex_sup_diff(det_ex      : DETrainer,
     ind = (profile_ex*profile_sup).argmax()
     
     return angle_diff(ori_ex[ind],ori_sup[ind])
+
+def process_feature(feature     : ndarray
+                    ) -> ndarray:
+    """
+    Take a linear or quadratic feature and turn it into a form that can be 
+    used in fft_orientation.
+
+    Parameters
+    ----------
+    feature : ndaray
+        The weights from the linear or quadratic feature. Linear features have 
+        a shape of 1 in the last dimension.
+
+    Returns
+    -------
+    ndarray
+        The processed feature.
+
+    """
+    
+    # Just drop the two singleton dimensions from feature if linear
+    if feature.shape[0] == 1:
+        
+        return feature[...,0,0]
+    
+    # Weight feature eigenvectors by eigenvalues and reshape
+    else:
+        
+        # Create J
+        U   = feature[...,::2]
+        V   = feature[...,1::2]
+        
+        rank    = U.shape[-1]
+        shape   = U.shape[1:-2]
+        pixels  = prod(shape)
+        
+        U.shape = (pixels,rank)
+        V.shape = (pixels,rank)
+        
+        J = dot(U,V.T)
+        J = 0.5*(J+J.T)
+        
+        # Get eigenvalues and eigenvectors
+        w,v = eigh(J)
+        
+        # Weight eigenvectors by eigenvalues
+        v = v*w
+        
+        # Move spatial dimensions to second and third spot.
+        return v.T.reshape((-1,)+shape)
+        
+
+def calc_feature_ori_diff(feature1  : ndarray,
+                          feature2  : ndarray
+                          ) -> float64 :
+    """
+    Calculate the difference in dominant orientation between two linear and/or 
+    quadratic features
+
+    Parameters
+    ----------
+    feature1 : ndarray
+        The weights of a linear or quadratic feature.
+    feature2 : ndarray
+        The weights of a second linear or quadratic feature.
+
+    Returns
+    -------
+    float64
+        The difference in their preferred orientation.
+
+    """
+    
+    # Rearrange paramters for use in fft_orientation
+    feature1    = process_feature(feature1)
+    feature2    = process_feature(feature2)
+    
+    # Calculate the dominant orientation of each feature
+    theta1      = fft_orientation(feature1)
+    theta2      = fft_orientation(feature2)
+    
+    # Return difference in orientations.
+    return angle_diff(theta1,theta2)
+
+def circular_variance(weights   : ndarray,
+                      angles    : ndarray,
+                      directional   : bool  = False
+                      ) -> float64 :
+    """
+    Calculates the circular variance
+
+    Parameters
+    ----------
+    weights : ndarray
+        The value at each angle.
+    angles : ndarray
+        The orientation for each point.
+    directional : bool, optional
+        Whether opposing direction are considered equivalent. The default is 
+        False.
+
+    Returns
+    -------
+    float64
+        The circular variance.
+
+    """
+    
+    if directional:
+        
+        factor  = 1
+        
+    else:
+        
+        factor  = 2
+        
+    return abs((weights*exp(factor*1j*angles)).sum())/weights.sum()

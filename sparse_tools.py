@@ -7,7 +7,8 @@ Created on Mon Apr 21 15:27:56 2025
 """
 
 from keras.models import Model
-from numpy import float32,float64,ndarray,rot90
+from numpy import dot,float32,float64,ndarray,prod,rot90
+from numpy.linalg import eigh
 
 def sparseness(x    : ndarray
                ) -> float32 | float64:
@@ -30,24 +31,21 @@ def sparseness(x    : ndarray
     
     return x.var()/x.mean()**2
 
-def rotate_layer1_sparse(model      : Model,
-                         stimulus   : ndarray
-                         ) -> float32 :
+def rotate_layer1(model     : Model,
+                  ) -> Model :  
     """
-    Calculates the sparsenss of the model if the first layer is rotated 90 
+    Calculates the response of the model if the first layer is rotated 90 
     degrees.
 
     Parameters
     ----------
     model : Model
         Model to be modified.
-    stimulus : ndarray
-        Stimulus to use to calculate responses.
 
     Returns
     -------
-    float32
-        .
+    Model
+        The modified model.
 
     """
     
@@ -58,4 +56,67 @@ def rotate_layer1_sparse(model      : Model,
     
     model.set_weights(weights)
     
-    return sparseness(model.predict(stimulus))
+    return model
+
+def rotate_suppression(model    : Model,
+                       layer    : int
+                       ) -> Model :
+    """
+    Rotates the suppressive component of the quadratic term of the selected 
+    layer 90 degrees.
+
+    Parameters
+    ----------
+    model : Model
+        A two layer quadratic model.
+    layer : int
+        The layer to rotate.
+
+    Returns
+    -------
+    Model
+        The modified model.
+
+    """
+    
+    # Extract low rank parts of quadratic kernel
+    weights = model.get_weights()
+    
+    layer_index = 4 *(layer - 1)
+    
+    U = weights[layer_index][...,::2]
+    V = weights[layer_index][...,1::2]
+    
+    shape = U.shape[:-1]
+    num_feat = U.shape[-1]
+    kernel_size = prod(shape)
+    
+    # Create a symmetric quadratic kernelfrom low rank parts
+    U.shape = (kernel_size,num_feat)
+    V.shape = (kernel_size,num_feat)
+    
+    J = dot(U,V.T)
+    J = 0.5*(J+J.T)
+    
+    # Calculate eigenvalues and reduce to proper rank
+    w,v = eigh(J)
+    
+    ind = abs(w).argsort()[-num_feat:]
+    
+    w = w[ind]
+    v = v[:,ind]
+    
+    # Rotate suppressive features (those with negative eigenvalues)
+    v.shape = shape + (num_feat,)
+    
+    v[...,w < 0] = rot90(v[...,w < 0],axes=(1,2))
+    
+    # Rewrite U and V as eigenvectors and eigenvectors times eigenvalues,
+    # respetively
+    weights[layer_index][...,::2]   = v
+    weights[layer_index][...,1::2]  = v*w
+    
+    # Update the model's weights
+    model.set_weights(weights)
+    
+    return model
