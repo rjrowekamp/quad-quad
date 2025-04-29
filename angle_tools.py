@@ -7,9 +7,9 @@ Created on Tue Apr 15 13:41:56 2025
 """
 
 from numpy import angle,arctan,cos,dot,exp,float64,mgrid,ndarray,ones,pi,prod
-from numpy import sin
+from numpy import sin,zeros
 from numpy.fft import fftn
-from numpy.linalg import eigh
+from numpy.linalg import eigh,svd
 
 from diff_evol import DETrainer
 
@@ -568,3 +568,131 @@ def circular_variance(weights   : ndarray,
         factor  = 2
         
     return abs((weights*exp(factor*1j*angles)).sum())/weights.sum()
+
+def motion_index_linear(A       : ndarray,
+                        n_time  : int   = 5
+                        ) -> float64:
+    """
+    Calculate motion index for a linear feature
+
+    Parameters
+    ----------
+    A : ndarray
+        Linear feature.
+    n_time : int, optional
+        Temporal length. The default is 5.
+
+    Returns
+    -------
+    float64
+        Motion index calculated as fraction of the energy in the first 
+        singular value and normalized to have uniform energy have an index of
+        zero.
+
+    """
+    
+    s = svd(A.reshape((n_time,-1)))[1]
+    
+    return (s[0]/s.sum() - 1./s.size)/(1-1./s.size)
+
+def motio_index_quadratic(UV        : ndarray,
+                          n_time    : int   = 5
+                          ) -> float64:
+    """
+    Calcualte motion index of a quadratic feature.
+
+    Parameters
+    ----------
+    UV : ndarray
+        Quadratic feature.
+    n_time : int, optional
+        Temporal weight. The default is 5.
+
+    Returns
+    -------
+    float64
+        otion index calculated as fraction of the energy in the first 
+        singular value, normalized to have uniform energy have an index of
+        zero, and weighted by the magnitude of the eigenvalues.
+
+    """
+    
+    U,V = UV[...,::2],UV[...,1::2]
+    
+    rank    = U.shape[-1]
+    
+    J = dot(U.reshape((-1,rank)),V.reshape((-1,rank)).T)
+    
+    weights,vectors = eigh(J)
+    
+    vectors.shape = (n_time,-1,weights.size)
+    
+    motion_index = zeros(weights.size)
+    
+    for j in range(weights.size):
+        
+        s = svd(vectors)[1]
+        
+        motion_index[j] = s[0]/s.sum()
+    
+    weights /= weights.sum()
+    
+    return (dot(motion_index,weights)-1./s.size)/(1-1./s.size)
+
+def oriented_weight(A           : ndarray,
+                    num_angles  : int   = 10
+                    ) -> ndarray:
+    """
+    Calculate the power of an array in various orientations.
+
+    Parameters
+    ----------
+    A : ndarray
+        Array to be analyzed. The relevant dimensions are the final two.
+    num_angles : int, optional
+        Number of orientations to divide the space into. The default is 10.
+
+    Returns
+    -------
+    ndarray
+        The power at each angle.
+
+    """
+
+    # Calculate power at zero out constant term and Nyquist frequencies
+    FA = abs(fftn(A,axes=[-2,-1]))
+
+    FA[...,0,0] = 0
+
+    D1,D2 = A.shape[-2:]
+
+    if D1 % 2 == 0:
+        FA[...,D1//2,:] = 0
+    if D2 % 2 == 0:
+        FA[...,D2//2,:] = 0
+
+    # Calculate the spatial frequency of each point and convert into angle
+    x1,x2 = mgrid[:D1,:D2]
+
+    k1 = 2*pi*x1/D1
+    k2 = 2*pi*x2/D2
+
+    k1 = (k1 + pi) % (2 * pi) - pi
+    k2 = (k2 + pi) % (2 * pi) - pi
+
+    th = angle((k1 + 1j * k2)*exp(1j*pi/num_angles/2))
+
+    # Only measure circle around 0 frequency
+    ind_k = k1**2 + k2**2 < pi **2
+
+    delta_theta = pi / num_angles
+
+    theta_weights = zeros(num_angles)
+
+    for j in range(num_angles):
+        ind = (th >= -pi + delta_theta*j)&(th < -pi + delta_theta*(j+1))&ind_k
+        theta_weights[j] += FA[...,ind].sum()
+        ind = (th >= delta_theta*j)&(th < delta_theta*(j+1))&ind_k
+        theta_weights[j] += FA[...,ind].sum()
+
+    return theta_weights
