@@ -16,11 +16,11 @@ diff_evol.py has a framework to run differential evolution. diff_evol_func.py ha
 
 Fig 4:
 
-angle_tools.py has functions to measure the direction selectivity of quadratic features using FFT.
+angle_tools.py is used again to compare features from different layers.
 
 Fig 5:
 
-angle_tools.py is used again to compare features from different layers.
+angle_tools.py has functions to measure the direction selectivity of quadratic features using FFT.
 
 Fig 6:
 
